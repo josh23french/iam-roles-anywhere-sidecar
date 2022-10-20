@@ -66,10 +66,12 @@ func main() {
 		return c.JSON(http.StatusOK, "OK")
 	})
 
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "8080"
+	listen := os.Getenv("LISTEN")
+	if listen == "" {
+		// default to localhost:8080, but allow it to be overridden...
+		// specifically for docker on mac where ipv6 somehow *still* isn't supported 🤯
+		listen = "[::1]:8080"
 	}
 
-	e.Logger.Fatal(e.Start("[::1]:" + httpPort))
+	e.Logger.Fatal(e.Start(listen))
 }
