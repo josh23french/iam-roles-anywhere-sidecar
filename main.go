@@ -11,6 +11,18 @@ import (
 	helper "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 )
 
+// https://github.com/awslabs/amazon-ecs-local-container-endpoints/blob/ce24b29f9c7e880f2b7bfc285d816dbc0d06c499/local-container-endpoints/handlers/types.go
+// for SOME reason, the signing helper doesn't give the same shape expected from the container creds url 🤯
+
+// CredentialResponse is used to marshal the JSON response for the Credentials Service
+type CredentialResponse struct {
+	AccessKeyID     string `json:"AccessKeyId"`
+	Expiration      string
+	RoleArn         string
+	SecretAccessKey string
+	Token           string
+}
+
 func getBoolEnv(key string) bool {
 	val, err := strconv.ParseBool(os.Getenv(key))
 	if err != nil {
@@ -59,7 +71,13 @@ func main() {
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()})
 		}
-		return c.JSON(http.StatusOK, output)
+		return c.JSON(http.StatusOK, &CredentialResponse{
+			AccessKeyID:     output.AccessKeyId,
+			Expiration:      output.Expiration,
+			RoleArn:         credentialsOptions.RoleArn,
+			SecretAccessKey: output.SecretAccessKey,
+			Token:           output.SessionToken,
+		})
 	})
 
 	e.GET("/ping", func(c echo.Context) error {
