@@ -39,10 +39,6 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.GET("/", func(c echo.Context) error {
-		return c.HTML(http.StatusOK, "Hello, Docker! <3")
-	})
-
 	e.GET("/creds", func(c echo.Context) error {
 		credentialsOptions := helper.CredentialsOpts{
 			PrivateKeyId:        os.Getenv("PRIVATE_KEY_ID"),
@@ -75,5 +71,5 @@ func main() {
 		httpPort = "8080"
 	}
 
-	e.Logger.Fatal(e.Start("[::]:" + httpPort))
+	e.Logger.Fatal(e.Start("[::1]:" + httpPort))
 }
