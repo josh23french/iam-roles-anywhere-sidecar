@@ -1,12 +1,11 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 
 	helper "github.com/aws/rolesanywhere-credential-helper/aws_signing_helper"
 )
@@ -45,44 +44,23 @@ type ErrorResponse struct {
 }
 
 func main() {
+	log.SetFlags(log.LUTC | log.Ldate | log.Ltime | log.Lmicroseconds)
 
-	e := echo.New()
-
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
-	e.GET("/creds", func(c echo.Context) error {
-		credentialsOptions := helper.CredentialsOpts{
-			PrivateKeyId:        os.Getenv("PRIVATE_KEY_ID"),
-			CertificateId:       os.Getenv("CERTIFICATE_ID"),
-			CertificateBundleId: os.Getenv("CERTIFICATE_BUNDLE_ID"),
-			RoleArn:             os.Getenv("ROLE_ARN"),
-			ProfileArnStr:       os.Getenv("PROFILE_ARN"),
-			TrustAnchorArnStr:   os.Getenv("TRUST_ANCHOR_ID"),
-			SessionDuration:     getIntEnv("SESSION_DURATION", 3600),
-			Region:              os.Getenv("AWS_REGION"),
-			Endpoint:            os.Getenv("ENDPOINT"),
-			NoVerifySSL:         getBoolEnv("NO_VERIFY_SSL"),
-			WithProxy:           getBoolEnv("WITH_PROXY"),
-			Debug:               getBoolEnv("DEBUG"),
-			Version:             os.Getenv("CREDENTIAL_VERSION"),
-		}
-		output, err := helper.GenerateCredentials(&credentialsOptions)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()})
-		}
-		return c.JSON(http.StatusOK, &CredentialResponse{
-			AccessKeyID:     output.AccessKeyId,
-			Expiration:      output.Expiration,
-			RoleArn:         credentialsOptions.RoleArn,
-			SecretAccessKey: output.SecretAccessKey,
-			Token:           output.SessionToken,
-		})
-	})
-
-	e.GET("/ping", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, "OK")
-	})
+	credentialsOptions := helper.CredentialsOpts{
+		PrivateKeyId:        os.Getenv("PRIVATE_KEY_ID"),
+		CertificateId:       os.Getenv("CERTIFICATE_ID"),
+		CertificateBundleId: os.Getenv("CERTIFICATE_BUNDLE_ID"),
+		RoleArn:             os.Getenv("ROLE_ARN"),
+		ProfileArnStr:       os.Getenv("PROFILE_ARN"),
+		TrustAnchorArnStr:   os.Getenv("TRUST_ANCHOR_ID"),
+		SessionDuration:     getIntEnv("SESSION_DURATION", 3600),
+		Region:              os.Getenv("AWS_REGION"),
+		Endpoint:            os.Getenv("ENDPOINT"),
+		NoVerifySSL:         getBoolEnv("NO_VERIFY_SSL"),
+		WithProxy:           getBoolEnv("WITH_PROXY"),
+		Debug:               getBoolEnv("DEBUG"),
+		Version:             os.Getenv("CREDENTIAL_VERSION"),
+	}
 
 	listen := os.Getenv("LISTEN")
 	if listen == "" {
@@ -91,5 +69,24 @@ func main() {
 		listen = "[::1]:8080"
 	}
 
-	e.Logger.Fatal(e.Start(listen))
+	http.HandleFunc("/creds", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		output, err := helper.GenerateCredentials(&credentialsOptions)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(&ErrorResponse{Error: err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(&CredentialResponse{
+			AccessKeyID:     output.AccessKeyId,
+			Expiration:      output.Expiration,
+			RoleArn:         credentialsOptions.RoleArn,
+			SecretAccessKey: output.SecretAccessKey,
+			Token:           output.SessionToken,
+		})
+	})
+
+	log.Printf("listening on %v\n", listen)
+	log.Fatal(http.ListenAndServe(listen, requestLogger(http.DefaultServeMux)))
 }
