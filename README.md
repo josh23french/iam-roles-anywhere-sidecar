@@ -2,6 +2,13 @@
 
 A sidecar container that provides credentials (AWS_CONTAINER_CREDENTIALS_FULL_URI) using the credential helper via a simple HTTP server.
 
+# This repository is now read-only
+
+Please migrate to the official rolesanywhere docker image:
+
+* https://github.com/aws/rolesanywhere-credential-helper?tab=readme-ov-file#docker-image
+* https://gallery.ecr.aws/rolesanywhere/credential-helper
+
 ## Usage
 
 Set this container up as a sidecar to your application container. In Kubernetes, this would be another container in the same pod, but this will work for any container solution.
