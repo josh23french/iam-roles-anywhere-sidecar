@@ -87,6 +87,13 @@ func main() {
 		})
 	})
 
+	http.HandleFunc("/healthz", healthzHandler)
+
 	log.Printf("listening on %v\n", listen)
 	log.Fatal(http.ListenAndServe(listen, requestLogger(http.DefaultServeMux)))
+}
+
+func healthzHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("200 OK"))
 }
